@@ -1,3 +1,5 @@
+[![ci](https://github.com/toelke/autotask4todoist/actions/workflows/build-docker.yaml/badge.svg?branch=main)](https://github.com/toelke/autotask4todoist/actions/workflows/build-docker.yaml)
+
 # autotask4todoist
 Automatically create new tasks when you complete tasks!
 
