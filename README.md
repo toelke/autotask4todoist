@@ -19,27 +19,35 @@ Get the todoist API key from https://todoist.com/prefs/integrations (at the very
 
 On any task create a comment like this:
 
+~~~
 ```
 On Complete: Next Task 1 tomorrow @garden
 ```
+~~~
+
+(Please note that the comment *must* be enclosed in "```")
 
 When you close this task, `autotask4todoist` will automatically create a task just like if you typed in everything behind the `:` into the quick-add bar (in the example the task will be scheduled for tomorrow and have the label "garden").
 
 You can also create multiple tasks by having multiple comments or by adding lines too the comment:
 
+~~~
 ```
 On Complete: Next Task 1 tomorrow @garden
 On Complete: Next Task 2 in three days @home
 ```
+~~~
 
 You can also add a command for `autotask4todoist` to the newly-created task by adding them indented:
 
+~~~
 ```
 On Complete: Next Task 1 tomorrow @garden
   On Complete: Next Task 1a today @garden
   On Complete: Next Task 1b in 1 hour @home
 On Complete: Next Task 2
 ```
+~~~
 
 This will create the two tasks "Next Task 1" and "Next Task 2" when you close the original task; when you complete the task "Next Task 1" `autotask4todoist` will create two new tasks "Next Task 1a" and "Next Task 1b" for you.
 

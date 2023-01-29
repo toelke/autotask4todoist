@@ -1,6 +1,6 @@
 FROM python:3.10.7
 
-RUN pip install --no-cache-dir paho-mqtt todoist-python
+RUN pip install --no-cache-dir paho-mqtt requests
 
 WORKDIR /app
 COPY *.py /app

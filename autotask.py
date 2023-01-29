@@ -24,17 +24,19 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-import todoist
 import paho.mqtt.client as mqtt
 import json
 import logging
 import textwrap
 import os
+import requests
 
 
 TOPIC = os.environ.get('MQTT_TOPIC', 'todoist/activity')
 
-api = todoist.TodoistAPI(os.environ['TODOIST_API_KEY'])
+
+session = requests.Session()
+session.headers.update({'Authorization': f'Bearer {os.environ["TODOIST_API_KEY"]}'})
 
 logging.basicConfig(level="INFO", format="%(asctime)s %(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger()
@@ -51,9 +53,9 @@ def split_by_indentation(s: str):
 
 
 def handle_completed_task(task_id):
-    item = api.items.get(task_id)
-    for note in item["notes"]:
-        content = note["content"]
+    comments = session.get(f"https://api.todoist.com/rest/v2/comments?task_id={task_id}").json()
+    for comment in comments:
+        content = comment["content"].replace('`', '').strip()
         if content.startswith("On Complete:"):
             logger.info('Handling comment')
             tasks_with_comments = split_by_indentation(content)
@@ -67,15 +69,14 @@ def handle_completed_task(task_id):
                 # Remove 'On Complete:'
                 task = task[12:].strip()
                 logger.info(f"adding task {task}")
-                new_task = api.quick.add(task)
+                new_task = session.post("https://api.todoist.com/sync/v9/quick/add", data={"text": task}).json()
                 logger.info(f'added as id {new_task["id"]}')
                 if comments:
                     logger.info("Adding comments")
-                    api.notes.add(new_task["id"], comments)
+                    session.post("https://api.todoist.com/rest/v2/comments", json={"task_id": new_task["id"], "content": f"```\n{comments}\n```"})
         else:
             logger.info('Skipping comment')
     logger.info('Finished handling complete event')
-    api.commit()
 
 
 def on_message(client, userdata, message):
@@ -85,7 +86,7 @@ def on_message(client, userdata, message):
         if event["event_type"] == "completed":
             logger.info(f'Task {event["object_id"]} completed')
             return handle_completed_task(event["object_id"])
-        logger.info("Ignoring event: %d %s", event["object_id"], event["event_type"])
+        logger.info("Ignoring event: %s %s", event["object_id"], event["event_type"])
     except Exception as e:
         logger.exception(e)
         raise
