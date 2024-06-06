@@ -101,7 +101,7 @@ def on_subscribe(client, userdata, mid, granted_ops):
     logger.info("Subscribed")
 
 
-mqtt_client = mqtt.Client()
+mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
 mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
 mqtt_client.on_subscribe = on_subscribe
