@@ -24,19 +24,19 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-import paho.mqtt.client as mqtt
 import json
 import logging
-import textwrap
 import os
+import textwrap
+
+import paho.mqtt.client as mqtt
 import requests
 
-
-TOPIC = os.environ.get('MQTT_TOPIC', 'todoist/activity')
+TOPIC = os.environ.get("MQTT_TOPIC", "todoist/activity")
 
 
 session = requests.Session()
-session.headers.update({'Authorization': f'Bearer {os.environ["TODOIST_API_KEY"]}'})
+session.headers.update({"Authorization": f'Bearer {os.environ["TODOIST_API_KEY"]}'})
 
 logging.basicConfig(level="INFO", format="%(asctime)s %(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger()
@@ -53,14 +53,14 @@ def split_by_indentation(s: str):
 
 
 def handle_completed_task(task_id):
-    comments = session.get(f"https://api.todoist.com/rest/v2/comments?task_id={task_id}").json()
-    for comment in comments:
-        content = comment["content"].replace('`', '').strip()
+    comments = session.get(f"https://api.todoist.com/api/v1/comments?task_id={task_id}").json()
+    for comment in comments["results"]:
+        content = comment["content"].replace("`", "").strip()
         if content.startswith("On Complete:"):
-            logger.info('Handling comment')
+            logger.info("Handling comment")
             tasks_with_comments = split_by_indentation(content)
             for task_with_comments in tasks_with_comments:
-                if '\n' in task_with_comments:
+                if "\n" in task_with_comments:
                     task, comments = task_with_comments.split("\n", 1)
                     comments = textwrap.dedent(comments)
                 else:
@@ -69,14 +69,19 @@ def handle_completed_task(task_id):
                 # Remove 'On Complete:'
                 task = task[12:].strip()
                 logger.info(f"adding task {task}")
-                new_task = session.post("https://api.todoist.com/sync/v9/quick/add", data={"text": task}).json()
+                new_task = session.post(
+                    "https://api.todoist.com/api/v1/tasks/quick", json={"text": task}
+                ).json()
                 logger.info(f'added as id {new_task["id"]}')
                 if comments:
                     logger.info("Adding comments")
-                    session.post("https://api.todoist.com/rest/v2/comments", json={"task_id": new_task["id"], "content": f"```\n{comments}\n```"})
+                    session.post(
+                        "https://api.todoist.com/api/v1/comments",
+                        json={"task_id": new_task["id"], "content": f"```\n{comments}\n```"},
+                    )
         else:
-            logger.info('Skipping comment')
-    logger.info('Finished handling complete event')
+            logger.info("Skipping comment")
+    logger.info("Finished handling complete event")
 
 
 def on_message(client, userdata, message):
@@ -92,19 +97,19 @@ def on_message(client, userdata, message):
         raise
 
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, connect_flags, reason_code, properties):
     logger.info("Connected")
     client.subscribe(TOPIC)
 
 
-def on_subscribe(client, userdata, mid, granted_ops):
+def on_subscribe(client, userdata, mid, reason_code_list, properties):
     logger.info("Subscribed")
 
 
-mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
 mqtt_client.on_subscribe = on_subscribe
 
-mqtt_client.connect(os.environ.get('MQTT_BROKER', '127.0.0.1'))
+mqtt_client.connect(os.environ.get("MQTT_BROKER", "127.0.0.1"))
 mqtt_client.loop_forever()
